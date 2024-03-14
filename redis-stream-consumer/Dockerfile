@@ -1,4 +1,4 @@
-FROM openjdk:11.0.13-jdk-slim-bullseye as builder
+FROM amazoncorretto:21-alpine3.18 as builder
 ARG BUILD_CMD="./mvnw clean package -DskipTests -Dmaven.test.skip=true"
 COPY .mvn .mvn
 COPY mvnw .
@@ -15,11 +15,12 @@ RUN ${BUILD_CMD} \
     && (cd build; jar -xf ../target/*.jar) \
     && ./mvnw clean
 
-FROM openjdk:11.0.13-jre-slim-bullseye
+FROM amazoncorretto:21-alpine3.18
 ARG DEPENDENCY=/build
 WORKDIR /app
 COPY wait-for-it.sh /
 RUN chmod +x /wait-for-it.sh
 COPY --from=builder ${DEPENDENCY}/BOOT-INF/lib lib
 COPY --from=builder ${DEPENDENCY}/BOOT-INF/classes .
+RUN apk add --no-cache bash
 CMD ["/wait-for-it.sh", "redis:6379", "--", "java", "-cp", "/app:/app/lib/*", "pl.lrozek.redis.stream.consumer.RedisStreamConsumerApplication"]
